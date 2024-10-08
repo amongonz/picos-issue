@@ -1,3 +1,6 @@
-(test
+(executable
  (name moonpool_issue_35)
  (libraries moonpool moonpool-io picos_std.finally))
+
+(cram
+ (deps moonpool_issue_35.exe))
