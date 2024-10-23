@@ -7,22 +7,27 @@ let () =
   Picos_io_select.configure ()
 
 let main _ =
+  let@ zero =
+    finally Moonpool_io.Unix.close @@ fun () ->
+    Moonpool_io.Unix.openfile "/dev/zero" [ O_RDONLY; O_CLOEXEC ] 0
+  in
   let@ null =
     finally Moonpool_io.Unix.close @@ fun () ->
-    Moonpool_io.Unix.openfile "/dev/null" [ O_RDWR; O_CLOEXEC ] 0
+    Moonpool_io.Unix.openfile "/dev/null" [ O_WRONLY; O_CLOEXEC ] 0
   in
-  let rec loop () =
-    Printf.printf "Read...\n%!";
-    let buf = Bytes.create 1024 in
-    match Moonpool_io.Unix.read null buf 0 (Bytes.length buf) with
-    | 0 -> Printf.printf "Got 0\n%!"
+  let buf = Bytes.create 1024 in
+  let rec loop remaining =
+    match
+      Moonpool_io.Unix.read zero buf 0 (min (Bytes.length buf) remaining)
+    with
+    | 0 -> ()
     | read_n ->
-        Printf.printf "Got %d\n%!" read_n;
         ignore (Moonpool_io.Unix.write null buf 0 read_n : int);
-        loop ()
+        loop (remaining - read_n)
   in
-  loop ()
+  loop (1024 * 1024)
 
 let () =
+  Printf.printf "Start\n%!";
   Moonpool_fib.main main;
-  Printf.printf "OK\n%!"
+  Printf.printf "End\n%!"
